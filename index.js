@@ -18,7 +18,6 @@ let gameOver;
 let startTime;
 let bestScore;
 let mainMenu;
-let spawnFactor;
 
 
 // UI elements
@@ -31,6 +30,7 @@ let getRandom = (a, b) => (b - a) * Math.random() + a;
 
 
 let toHex = (decimal) => {
+    // Function converts decimal number to hexadecimal number
     var hex = decimal.toString(16);
     
     // Ensure leading zero
@@ -43,11 +43,14 @@ let toHex = (decimal) => {
 
 
 let generateNewEnemy = () => {
+    // Generate random gray color
     let rgbFactor = toHex(Math.floor(getRandom(100, 220)));
     let color = "#" + rgbFactor + rgbFactor + rgbFactor;
+
+    // Generate random component width
     let width = getRandom(MIN_COMPONENT_WIDTH, MAX_COMPONENT_WIDTH);
 
-    // Get spawn position
+    // Get component spawn position
     let validSpawnPosition = false;
     let x;
     let y;
@@ -57,11 +60,14 @@ let generateNewEnemy = () => {
 
         validSpawnPosition = (x < -MAX_COMPONENT_WIDTH || x > gameArea.canvas.width) && (y < -MAX_COMPONENT_WIDTH || y > gameArea.canvas.height)
     }
+
+    // Register new enemy component
     enemies.push(new Component(width, width, color, x, y, false));
 };
 
 
 let generateEnemies = (enemyList=undefined) => {
+    // Function can accept existing enemy list and in that case it will persist the existing ones and generate new ones
     enemies = enemyList == undefined ? [] : enemyList;
     for (i = 0; i < NUM_OF_ENEMIES; i++) {
         generateNewEnemy();
@@ -70,13 +76,15 @@ let generateEnemies = (enemyList=undefined) => {
 
 
 let generateNewEnemies = () => {
+    // This function is used to additionally generate new enemies after defined number of seconds
     let existingEnemies = [];
     for (enemy of enemies) {
-        // Check if enemy is still within the canvas
+        // Check if enemy is still within the canvas and if so, keep it alive
         if (enemy.isInGameArea()) 
             existingEnemies.push(enemy);
-        
     }
+
+    // Use already existing function to generate new enemies and persist the existing ones (the ones inside the canvas)
     generateEnemies(existingEnemies);
 };
 
@@ -113,17 +121,20 @@ let createPlayer = () => {
 
 
 let createGameArea = () => {
+    // Just a helper function
     gameArea = new GameArea();
 };
 
 
 let loadBestScore = () => {
+    // The function accesses the local storage and retrieves the best score value or undefined if that value does not exist
     let value = localStorage.getItem(LOCAL_STORAGE_BEST_SCORE_KEYWORD);
     return value != undefined ? Number.parseInt(value) : value;
 };
 
 
 let setBestScore = (score) => {
+    // The function saves the given score into the local storage
     localStorage.setItem(LOCAL_STORAGE_BEST_SCORE_KEYWORD, JSON.stringify(score));
 };
 
@@ -142,19 +153,19 @@ let formatScore = (score) => {
         useGrouping: false
     });
 
-    // Combine into MM:SS:MMM
+    // Format into MM:SS:MMM
     return formattedMinutes + ':' + formattedSeconds + ':' + formattedMilliseconds;
 };
 
 
 let showMainMenuDialog = () => {
-    // Clear any preexisting intervals
+    // Clear any preexisting resources
     if (enemiesSpawnInterval)
         clearInterval(enemiesSpawnInterval);
-    if (gameArea)
-        clearInterval(gameArea.interval);
+    if (gameArea) 
+        gameArea.clear()
     
-    // Clear end game dialog if exists
+    // Close end game dialog if exists
     endGameDialog?.close();
 
     // Reset game state
@@ -166,12 +177,14 @@ let showMainMenuDialog = () => {
     generateEnemies();
     enemiesSpawnInterval = setInterval(generateNewEnemies, SPAWN_FREQUENCY);
 
+    // Show dialog and start the game area update loop
     startGameDialog.show();
     gameArea.start();
 };
 
 
 let showEndGameDialog = (score) => {
+    // Function shows the end game dialog with formatted score and best score
     endGameDialog.show();
     document.getElementById("yourScore").innerText = formatScore(score);
     document.getElementById("bestScore").innerText = formatScore(bestScore);
@@ -180,6 +193,7 @@ let showEndGameDialog = (score) => {
 
 class Component {
     constructor(width, height, color, x, y, isPlayer) {
+        // Constructor accepts width and height of the component, color, initial x and y positions and flag which tells if component is player or not
         this.width = width;
         this.height = height;
         this.color = color;
@@ -188,9 +202,11 @@ class Component {
         this.isPlayer = isPlayer;
 
         if (this.isPlayer) {
-            this.speed_x = MAX_COMPONENT_SPEED;
+            // Make initial player's speed 0
+            this.speed_x = 0;
             this.speed_y = 0;
         } else {
+            // Randomly decide x and y speed and their direction
             let x_direction = getRandom(-1, 1) > 0 ? 1 : -1;
             let y_direction = getRandom(-1, 1) > 0 ? 1 : -1;
             this.speed_x = getRandom(MIN_COMPONENT_SPEED, MAX_COMPONENT_SPEED) * x_direction;
@@ -199,6 +215,7 @@ class Component {
     }
 
     update() {
+        // Function updates the game area canvas (this method is called as the setInterval callback function)
         let ctx = gameArea.context;
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -210,11 +227,13 @@ class Component {
     }
 
     newPos() {
+        // Calculate new x and y positions according to the component speed
         this.x += this.speed_x;
         this.y += this.speed_y;
     }
 
     checkCollision(other) {
+        // Method checks if this component is in collision with the other component
         return (
             this.x < other.x + other.width &&
             this.x + this.width > other.x &&
@@ -224,6 +243,7 @@ class Component {
     }
 
     isInGameArea() {
+        // Method checks if this component is inside the canvas game area
         return (
             this.x >= 0 &&
             this.y >= 0 &&
@@ -236,33 +256,35 @@ class Component {
 
 class GameArea {
     constructor() {
+        // Canvas element is used to display the game area
         this.canvas = document.getElementById("canvas");
     }
     
     start() {
+        // Method starts the update function, used for refreshing the game screen and game state
         this.context = this.canvas.getContext("2d");
         this.interval = setInterval(update, 1000 / FPS);
     }
     
     stop() {
+        // Stops the game area from updating
         clearInterval(this.interval);
     }
 
     clear() {
+        // Clears the game area
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 };
 
 
 let startGame = () => {
-    // Close main menu dialog
+    // Close main menu dialog and temporary canvas game area
     mainMenu = false;
-    clearInterval(enemiesSpawnInterval);
-    clearInterval(gameArea.interval);
-
-    // Close start and end game dialogs
     startGameDialog.close();
-    endGameDialog.close();
+    clearInterval(enemiesSpawnInterval);
+    gameArea.stop();
+    gameArea.clear();
 
     // Create game area
     createGameArea();
@@ -274,7 +296,6 @@ let startGame = () => {
 
     // Init game state
     startTime = new Date().getTime();
-    spawnFactor = 1;
     gameArea.start();
 };
 
@@ -285,7 +306,7 @@ let endGame = () => {
     // Reset game state
     gameOver = true;
     clearInterval(enemiesSpawnInterval);
-    clearInterval(gameArea.interval);
+    gameArea.stop();
 
     // Check current score and best score
     if (bestScore == undefined)
@@ -304,6 +325,7 @@ let update = () => {
     if (!mainMenu)
         for (enemy of enemies) {
             if (player.checkCollision(enemy)) {
+                // Game over
                 endGame();
                 break;
             }
